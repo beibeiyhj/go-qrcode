@@ -46,6 +46,7 @@ package qrcode
 import (
 	"bytes"
 	"errors"
+	graphics "github.com/BurntSushi/graphics-go/graphics"
 	"image"
 	"image/color"
 	"image/png"
@@ -118,7 +119,7 @@ type QRCode struct {
 // New constructs a QRCode.
 //
 //	var q *qrcode.QRCode
-//	q, err := qrcode.New("my content", qrcode.Medium)
+//	q, err := qrcode.New("my content", qrcode.Medium, -1)
 //
 // An error occurs if the content is too long.
 func New(content string, level RecoveryLevel) (*QRCode, error) {
@@ -170,7 +171,7 @@ func New(content string, level RecoveryLevel) (*QRCode, error) {
 	return q, nil
 }
 
-func newWithForcedVersion(content string, version int, level RecoveryLevel) (*QRCode, error) {
+func newWithForcedVersion(content string, version int, level RecoveryLevel, borderSize int) (*QRCode, error) {
 	var encoder *dataEncoder
 
 	switch {
@@ -258,9 +259,11 @@ func (q *QRCode) Image(size int) image.Image {
 	pixelsPerModule := size / realSize
 
 	// Center the symbol within the image.
-	offset := (size - realSize*pixelsPerModule) / 2
+	offset := 2
 
-	rect := image.Rectangle{Min: image.Point{0, 0}, Max: image.Point{size, size}}
+	newSize := pixelsPerModule * realSize + 2 * offset
+
+	rect := image.Rectangle{Min: image.Point{0, 0}, Max: image.Point{newSize, newSize}}
 
 	// Saves a few bytes to have them in this order
 	p := color.Palette([]color.Color{q.BackgroundColor, q.ForegroundColor})
@@ -287,7 +290,13 @@ func (q *QRCode) Image(size int) image.Image {
 		}
 	}
 
-	return img
+	dst := image.NewNRGBA(image.Rect(0,0, size, size))
+	err := graphics.Scale(dst, img)
+	if err != nil {
+		return nil
+	}
+
+	return dst
 }
 
 // PNG returns the QR Code as a PNG image.
